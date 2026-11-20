@@ -1,6 +1,9 @@
 #!/bin/sh
 
 URL="http://10.3.141.182:8000/dashboard.png?city=Oslo"
+WIFI_SSID="krispy"
+WIFI_CONNECT_TIMEOUT=30
+WIFI_CONNECT_ATTEMPTS=2
 DEST="/mnt/us/screensavers/current.png"
 TMP="/mnt/us/screensavers/current.tmp"
 INTERVAL=60  # Lowest practical rtcwake interval (seconds)
@@ -16,8 +19,26 @@ if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
 fi
 echo $$ > "$PIDFILE"
 
+run_lipc_set_prop() {
+    printf 'Running lipc-set-prop:'
+    printf ' %s' "$@"
+    printf '\n'
+
+    LIPC_OUTPUT=$(lipc-set-prop "$@" 2>&1)
+    LIPC_STATUS=$?
+    if [ -n "$LIPC_OUTPUT" ]; then
+        printf 'lipc-set-prop output:\n%s\n' "$LIPC_OUTPUT"
+    else
+        echo "lipc-set-prop output: <none>"
+    fi
+    echo "lipc-set-prop exit status: $LIPC_STATUS"
+    return "$LIPC_STATUS"
+}
+
 # Stop framework/powerd interference while dashboard mode is active
-lipc-set-prop com.lab126.powerd preventScreenSaver 1 >/dev/null 2>&1
+if ! run_lipc_set_prop com.lab126.powerd preventScreenSaver 1; then
+    echo "Failed to prevent the framework screensaver"
+fi
 
 render_error() {
     ERR_MSG="$1"
@@ -31,26 +52,65 @@ render_error() {
     fi
 }
 
+render_init() {
+    MSG="$1"
+    if [ -x "$FBINK" ]; then
+        "$FBINK" -q -c -m -M -y -2 "INITIALIZING DASHBOARD"
+        "$FBINK" -q -m -M -y 0 "$MSG"
+        
+        "$FBINK" -q -m -M -y 2 "DEFAULT WIFI: $WIFI_SSID"
+        "$FBINK" -q -m -M -y 4 "WIFI STATE: $(lipc-get-prop com.lab126.wifid cmState 2>/dev/null || echo unknown)"
+        "$FBINK" -q -m -M -y 6 "URL: $URL"
+    fi
+}
+
+enable_wifi() {
+    if ! run_lipc_set_prop com.lab126.cmd wirelessEnable 1; then
+        echo "Failed to request Wi-Fi radio enable"
+    fi
+    if ! run_lipc_set_prop -i com.lab126.wifid enable 1; then
+        echo "Failed to enable the Wi-Fi connection manager"
+    fi
+    if ! run_lipc_set_prop -s com.lab126.cmd ensureConnection "wifi:$WIFI_SSID"; then
+        echo "Failed to request connection to the saved Wi-Fi profile"
+    fi
+}
+
+disable_wifi() {
+    if ! run_lipc_set_prop -i com.lab126.wifid enable 0; then
+        echo "Failed to disable the Wi-Fi connection manager"
+    fi
+    if ! run_lipc_set_prop com.lab126.cmd wirelessEnable 0; then
+        echo "Failed to request Wi-Fi radio disable"
+    fi
+}
+
 fetch_dashboard() {
     ATTEMPT=1
-    while [ "$ATTEMPT" -le 3 ]; do
-        echo "Wi-Fi reconnect attempt $ATTEMPT/3"
-        if ! lipc-set-prop com.lab126.cmd wirelessEnable 1 >/dev/null 2>&1; then
-            echo "Failed to request Wi-Fi enable"
-        fi
+    WIFI_ERROR=1
+    while [ "$ATTEMPT" -le "$WIFI_CONNECT_ATTEMPTS" ]; do
+        echo "Wi-Fi reconnect attempt $ATTEMPT/$WIFI_CONNECT_ATTEMPTS"
+        enable_wifi
 
         WAIT=0
-        while [ "$WAIT" -lt 15 ]; do
-            if ip route | grep -q default; then
-                echo "Default route available: $(ip route)"
+        LAST_WIFI_STATE=""
+        while [ "$WAIT" -lt "$WIFI_CONNECT_TIMEOUT" ]; do
+            WIFI_STATE=$(lipc-get-prop com.lab126.wifid cmState 2>/dev/null)
+            if [ "$WIFI_STATE" != "$LAST_WIFI_STATE" ]; then
+                echo "Wi-Fi connection state: ${WIFI_STATE:-unknown}"
+                LAST_WIFI_STATE="$WIFI_STATE"
+            fi
+            if [ "$WIFI_STATE" = "CONNECTED" ] && ip route | grep -q default; then
+                echo "Wi-Fi connected with default route: $(ip route)"
                 break
             fi
-            echo "Waiting for default route... ($WAIT/15)"
+            echo "Waiting for Wi-Fi association and route... ($WAIT/$WIFI_CONNECT_TIMEOUT)"
             sleep 1
             WAIT=$((WAIT + 1))
         done
 
-        if [ "$WAIT" -lt 15 ]; then
+        if [ "$WAIT" -lt "$WIFI_CONNECT_TIMEOUT" ]; then
+            WIFI_ERROR=0
             echo "Fetching dashboard image from $URL..."
             HTTP_CODE=$(curl -s -L --connect-timeout 5 --max-time 10 -w "%{http_code}" "$URL" -o "$TMP")
             CURL_EXIT=$?
@@ -63,21 +123,22 @@ fetch_dashboard() {
             fi
         else
             CURL_EXIT=1
-            HTTP_CODE="No default route"
-            echo "No default route after 15 seconds"
+            HTTP_CODE="Wi-Fi not connected"
+            WIFI_ERROR=1
+            echo "Wi-Fi did not connect after $WIFI_CONNECT_TIMEOUT seconds (cmState: ${WIFI_STATE:-unknown})"
         fi
 
-        if [ "$ATTEMPT" -lt 3 ]; then
-            echo "Cycling Wi-Fi before retry"
-            if ! lipc-set-prop com.lab126.cmd wirelessEnable 0 >/dev/null 2>&1; then
-                echo "Failed to request Wi-Fi disable"
-            fi
+        if [ "$ATTEMPT" -lt "$WIFI_CONNECT_ATTEMPTS" ]; then
+            echo "Cycling Wi-Fi radio and connection manager before retry"
+            disable_wifi
             sleep 2
         fi
         ATTEMPT=$((ATTEMPT + 1))
     done
     return 1
 }
+
+render_init "Attempting to fetch dashboard from url"
 
 CYCLE=0
 while true; do
@@ -90,11 +151,13 @@ while true; do
             render_error "Empty dashboard response"
         elif [ "$FETCH_STATUS" -eq 2 ]; then
             render_error "HTTP Error (Status: $HTTP_CODE)"
-        elif [ "$HTTP_CODE" = "No default route" ]; then
-            render_error "Wi-Fi reconnect failed after 3 attempts"
+        elif [ "$WIFI_ERROR" -eq 1 ]; then
+            render_error "Wi-Fi association failed (cmState: ${WIFI_STATE:-unknown})"
         else
             render_error "Network/cURL Error (Code: $CURL_EXIT)"
         fi
+        run_lipc_set_prop com.lab126.powerd preventScreenSaver 0
+        echo "Dashboard fetch failed, sleeping for 5 seconds before retry"
         sleep 5
         continue
     fi
@@ -106,14 +169,24 @@ while true; do
         REFRESH_FLAG="-f"
     fi
 
+    # Shut Wi-Fi down cleanly before suspend to avoid stale driver state on resume
+    disable_wifi
+
     mv "$TMP" "$DEST"
     if [ -x "$FBINK" ]; then
+        sleep 3
         "$FBINK" -q $REFRESH_FLAG -g file="$DEST",w=1236,h=1648,halign=center,valign=center
     fi
 
-    # Brief pause so framebuffer flush finishes before suspending CPU
-    sleep 2
+    # Brief pause so Wi-Fi and framebuffer shutdown finish before suspending CPU
+    sleep 5
 
     # Suspend to RAM and wake after INTERVAL seconds
-    rtcwake -d "$RTC_DEV" -m mem -s "$INTERVAL" >/dev/null 2>&1 || sleep "$INTERVAL"
+    if rtcwake -d "$RTC_DEV" -m mem -s "$INTERVAL"; then
+        echo "System suspended for $INTERVAL seconds"
+    else
+        echo "Failed to suspend system (rtcwake exit code: $?)"
+        run_lipc_set_prop com.lab126.powerd preventScreenSaver 0
+        sleep 2
+    fi
 done
