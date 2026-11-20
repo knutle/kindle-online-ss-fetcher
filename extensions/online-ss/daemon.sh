@@ -1,6 +1,6 @@
 #!/bin/sh
 
-URL="http://10.3.141.1/files/dashboard-pw.png"
+URL="http://10.3.141.182:8000/dashboard.png?city=Oslo"
 DEST="/mnt/us/screensavers/current.png"
 TMP="/mnt/us/screensavers/current.tmp"
 INTERVAL=60  # Lowest practical rtcwake interval (seconds)
@@ -10,6 +10,7 @@ RTC_DEV="/dev/rtc0"
 
 FBINK=$(find /mnt/us/extensions/custom-screensaver -name "fbink*" -type f 2>/dev/null | head -n 1)
 
+# Prevent multiple instances of this script from running simultaneously
 if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
     exit 0
 fi
@@ -32,16 +33,30 @@ render_error() {
 
 CYCLE=0
 while true; do
+    echo "Starting dashboard fetch cycle ($CYCLE) at $(date "+%Y-%m-%d %H:%M:%S")"
     # Wake Wi-Fi and wait up to 15s for default route
     lipc-set-prop com.lab126.cmd wirelessEnable 1 >/dev/null 2>&1
     WAIT=0
     while [ $WAIT -lt 15 ]; do
         if ip route | grep -q default; then
+            echo "Network connectivity established. $(ip route)"
             break
         fi
+        echo "Waiting for network connectivity... ($WAIT/15)"
         sleep 1
         WAIT=$((WAIT + 1))
     done
+
+    if [ $WAIT -ge 15 ]; then
+        echo "Network connectivity failed after 15s."
+        echo "Current IP route: $(ip route)"
+        render_error "Network connectivity failed after 15s"
+        sleep 5
+        continue
+    fi
+
+    echo "Fetching dashboard image from $URL..."
+    sleep 1  # Brief pause to allow network to stabilize
 
     HTTP_CODE=$(curl -s -L --connect-timeout 5 --max-time 10 -w "%{http_code}" "$URL" -o "$TMP")
     CURL_EXIT=$?
