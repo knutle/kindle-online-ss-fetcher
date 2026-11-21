@@ -44,32 +44,14 @@ if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
 fi
 echo $$ > "$PIDFILE"
 
-# FBInk resolver - Borrowed from KOReader libkohelper 
-# Adapted from libkh[5]
-## Check if we have an FBInk binary available somewhere...
-# Default to something that won't horribly blow up...
-FBINK_BIN="true"
-for my_dir in /var/tmp /mnt/us/koreader /mnt/us/libkh/bin /mnt/us/linkss/bin /mnt/us/linkfonts/bin /mnt/us/usbnet/bin; do
-    my_fbink="${my_dir}/fbink"
-    if [ -x "${my_fbink}" ]; then
-        FBINK_BIN="${my_fbink}"
-        # Got it!
-        break
-    fi
-done
-
-has_fbink() {
-    # Because the fallback is the "true" binary/shell built-in ;).
-    if [ "${FBINK_BIN}" != "true" ]; then
-        # Got it!
-        return 0
-    fi
-
-    # If we got this far, we don't have fbink installed
-    return 1
+SCRIPT_DIR=$(CDPATH= cd "$(dirname "$0")" 2>/dev/null && pwd) || {
+    log_error "Unable to resolve daemon directory"
+    exit 1
 }
 
-if ! has_fbink; then
+FBINK_BIN="$SCRIPT_DIR/bin/fbink_hf"
+
+if [ ! -x "$FBINK_BIN" ]; then
     log_error "FBInk binary not found, cannot render dashboard"
     exit 1
 fi
