@@ -193,7 +193,9 @@ if [ "$KEEP_BACKLIGHT_ON" -eq 1 ]; then
     enable_wifi
 fi
 
+sleep 2
 render_init "Attempting to fetch dashboard from url"
+sleep 2
 
 CYCLE=0
 while true; do
