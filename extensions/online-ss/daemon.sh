@@ -7,7 +7,7 @@ WIFI_CONNECT_ATTEMPTS=2
 DEST="/mnt/us/screensavers/current.png"
 TMP="/mnt/us/screensavers/current.tmp"
 INTERVAL=60  # Wait interval (seconds)
-KEEP_BACKLIGHT_ON=1
+KEEP_BACKLIGHT_ON="${1:-1}"
 PIDFILE="/var/run/online_ss.pid"
 RTC_DEV="/dev/rtc0"
 [ -e /dev/rtc1 ] && RTC_DEV="/dev/rtc1"
@@ -135,7 +135,9 @@ fetch_dashboard() {
     WIFI_ERROR=1
     while [ "$ATTEMPT" -le "$WIFI_CONNECT_ATTEMPTS" ]; do
         log_info "Wi-Fi reconnect attempt $ATTEMPT/$WIFI_CONNECT_ATTEMPTS"
-        enable_wifi
+        if [ "$KEEP_BACKLIGHT_ON" -eq 0 ]; then
+            enable_wifi
+        fi
 
         WAIT=0
         LAST_WIFI_STATE=""
@@ -174,14 +176,22 @@ fetch_dashboard() {
         fi
 
         if [ "$ATTEMPT" -lt "$WIFI_CONNECT_ATTEMPTS" ]; then
-            log_warn "Cycling Wi-Fi radio and connection manager before retry"
-            disable_wifi
+            if [ "$KEEP_BACKLIGHT_ON" -eq 0 ]; then
+                log_warn "Cycling Wi-Fi radio and connection manager before retry"
+                disable_wifi
+            else
+                log_warn "Retrying Wi-Fi connection without cycling the radio"
+            fi
             sleep 2
         fi
         ATTEMPT=$((ATTEMPT + 1))
     done
     return 1
 }
+
+if [ "$KEEP_BACKLIGHT_ON" -eq 1 ]; then
+    enable_wifi
+fi
 
 render_init "Attempting to fetch dashboard from url"
 
@@ -216,8 +226,10 @@ while true; do
         REFRESH_FLAG="-f"
     fi
 
-    # Shut Wi-Fi down cleanly before suspend to avoid stale driver state on resume
-    disable_wifi
+    if [ "$KEEP_BACKLIGHT_ON" -eq 0 ]; then
+        # Shut Wi-Fi down cleanly before suspend to avoid stale driver state on resume
+        disable_wifi
+    fi
 
     mv "$TMP" "$DEST"
     if [ -x "$FBINK_BIN" ]; then
