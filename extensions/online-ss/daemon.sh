@@ -11,8 +11,6 @@ PIDFILE="/var/run/online_ss.pid"
 RTC_DEV="/dev/rtc0"
 [ -e /dev/rtc1 ] && RTC_DEV="/dev/rtc1"
 
-FBINK=$(find /mnt/us/extensions/custom-screensaver -name "fbink*" -type f 2>/dev/null | head -n 1)
-
 log() {
     LOG_SEVERITY="$1"
     shift
@@ -46,6 +44,36 @@ if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
 fi
 echo $$ > "$PIDFILE"
 
+# FBInk resolver - Borrowed from KOReader libkohelper 
+# Adapted from libkh[5]
+## Check if we have an FBInk binary available somewhere...
+# Default to something that won't horribly blow up...
+FBINK_BIN="true"
+for my_dir in /var/tmp /mnt/us/koreader /mnt/us/libkh/bin /mnt/us/linkss/bin /mnt/us/linkfonts/bin /mnt/us/usbnet/bin; do
+    my_fbink="${my_dir}/fbink"
+    if [ -x "${my_fbink}" ]; then
+        FBINK_BIN="${my_fbink}"
+        # Got it!
+        break
+    fi
+done
+
+has_fbink() {
+    # Because the fallback is the "true" binary/shell built-in ;).
+    if [ "${FBINK_BIN}" != "true" ]; then
+        # Got it!
+        return 0
+    fi
+
+    # If we got this far, we don't have fbink installed
+    return 1
+}
+
+if ! has_fbink; then
+    log_error "FBInk binary not found, cannot render dashboard"
+    exit 1
+fi
+
 run_lipc_set_prop() {
     log_debug "Running lipc-set-prop: $*"
 
@@ -70,23 +98,23 @@ render_error() {
     ERR_MSG="$1"
     # Use Europe/Oslo (CET/CEST) for accurate local timestamps
     NOW=$(TZ="CET-1CEST,M3.5.0,M10.5.0/3" date "+%Y-%m-%d %H:%M:%S")
-    if [ -x "$FBINK" ]; then
-        "$FBINK" -q -c -m -M -y -2 "DASHBOARD FETCH FAILED"
-        "$FBINK" -q -m -M -y 0 "$ERR_MSG"
-        "$FBINK" -q -m -M -y 2 "Time: $NOW"
-        "$FBINK" -q -m -M -y 4 "URL: $URL"
+    if [ -x "$FBINK_BIN" ]; then
+        "$FBINK_BIN" -q -c -m -M -y -2 "DASHBOARD FETCH FAILED"
+        "$FBINK_BIN" -q -m -M -y 0 "$ERR_MSG"
+        "$FBINK_BIN" -q -m -M -y 2 "Time: $NOW"
+        "$FBINK_BIN" -q -m -M -y 4 "URL: $URL"
     fi
 }
 
 render_init() {
     MSG="$1"
-    if [ -x "$FBINK" ]; then
-        "$FBINK" -q -c -m -M -y -2 "INITIALIZING DASHBOARD"
-        "$FBINK" -q -m -M -y 0 "$MSG"
+    if [ -x "$FBINK_BIN" ]; then
+        "$FBINK_BIN" -q -c -m -M -y -2 "INITIALIZING DASHBOARD"
+        "$FBINK_BIN" -q -m -M -y 0 "$MSG"
         
-        "$FBINK" -q -m -M -y 2 "DEFAULT WIFI: $WIFI_SSID"
-        "$FBINK" -q -m -M -y 4 "WIFI STATE: $(lipc-get-prop com.lab126.wifid cmState 2>/dev/null || echo unknown)"
-        "$FBINK" -q -m -M -y 6 "URL: $URL"
+        "$FBINK_BIN" -q -m -M -y 2 "DEFAULT WIFI: $WIFI_SSID"
+        "$FBINK_BIN" -q -m -M -y 4 "WIFI STATE: $(lipc-get-prop com.lab126.wifid cmState 2>/dev/null || echo unknown)"
+        "$FBINK_BIN" -q -m -M -y 6 "URL: $URL"
     fi
 }
 
@@ -199,9 +227,9 @@ while true; do
     disable_wifi
 
     mv "$TMP" "$DEST"
-    if [ -x "$FBINK" ]; then
+    if [ -x "$FBINK_BIN" ]; then
         sleep 3
-        "$FBINK" -q $REFRESH_FLAG -g file="$DEST",w=1236,h=1648,halign=center,valign=center
+        "$FBINK_BIN" -q $REFRESH_FLAG -g file="$DEST",w=1236,h=1648,halign=center,valign=center
     fi
 
     # Brief pause so Wi-Fi and framebuffer shutdown finish before suspending CPU
