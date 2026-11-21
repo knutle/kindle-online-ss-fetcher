@@ -6,7 +6,8 @@ WIFI_CONNECT_TIMEOUT=30
 WIFI_CONNECT_ATTEMPTS=2
 DEST="/mnt/us/screensavers/current.png"
 TMP="/mnt/us/screensavers/current.tmp"
-INTERVAL=60  # Lowest practical rtcwake interval (seconds)
+INTERVAL=60  # Wait interval (seconds)
+KEEP_BACKLIGHT_ON=1
 PIDFILE="/var/run/online_ss.pid"
 RTC_DEV="/dev/rtc0"
 [ -e /dev/rtc1 ] && RTC_DEV="/dev/rtc1"
@@ -37,6 +38,14 @@ log_warn() {
 log_error() {
     log "ERROR" "$@"
 }
+
+case "$KEEP_BACKLIGHT_ON" in
+    0|1) ;;
+    *)
+        log_error "KEEP_BACKLIGHT_ON must be 0 or 1 (got: $KEEP_BACKLIGHT_ON)"
+        exit 1
+        ;;
+esac
 
 # Prevent multiple instances of this script from running simultaneously
 if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
@@ -192,7 +201,9 @@ while true; do
         else
             render_error "Network/cURL Error (Code: $CURL_EXIT)"
         fi
-        run_lipc_set_prop com.lab126.powerd preventScreenSaver 0
+        if [ "$KEEP_BACKLIGHT_ON" -eq 0 ]; then
+            run_lipc_set_prop com.lab126.powerd preventScreenSaver 0
+        fi
         log_warn "Dashboard fetch failed, sleeping for 5 seconds before retry"
         sleep 5
         continue
@@ -214,16 +225,21 @@ while true; do
         "$FBINK_BIN" -q $REFRESH_FLAG -g file="$DEST",w=1236,h=1586,halign=center,valign=top,y=72
     fi
 
-    # Brief pause so Wi-Fi and framebuffer shutdown finish before suspending CPU
+    # Brief pause so Wi-Fi and framebuffer shutdown finish before waiting or suspending
     sleep 5
 
-    # Suspend to RAM and wake after INTERVAL seconds
-    if rtcwake -d "$RTC_DEV" -m mem -s "$INTERVAL"; then
-        log_info "System suspended for $INTERVAL seconds"
+    if [ "$KEEP_BACKLIGHT_ON" -eq 1 ]; then
+        log_info "Keeping frontlight on; waiting awake for $INTERVAL seconds"
+        sleep "$INTERVAL"
     else
-        RTCWAKE_STATUS=$?
-        log_error "Failed to suspend system (rtcwake exit code: $RTCWAKE_STATUS)"
-        run_lipc_set_prop com.lab126.powerd preventScreenSaver 0
-        sleep 2
+        # Suspend to RAM and wake after INTERVAL seconds
+        if rtcwake -d "$RTC_DEV" -m mem -s "$INTERVAL"; then
+            log_info "System suspended for $INTERVAL seconds"
+        else
+            RTCWAKE_STATUS=$?
+            log_error "Failed to suspend system (rtcwake exit code: $RTCWAKE_STATUS)"
+            run_lipc_set_prop com.lab126.powerd preventScreenSaver 0
+            sleep 2
+        fi
     fi
 done

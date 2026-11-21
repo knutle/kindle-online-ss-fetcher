@@ -8,7 +8,9 @@ Periodically fetch a screensaver image from any url and render it on your kindle
 
 * Image Format: Export your server's image as an 8-bit grayscale PNG at 1236 × 1648 pixels for the fastest rendering and sharpest text on the PW5 screen.
 
-* Wi-Fi is disabled before RTC suspend and explicitly re-enabled on wake.
+* Wi-Fi is disabled before each wait interval and enabled again for the next fetch.
+
+* Set `KEEP_BACKLIGHT_ON=1` in `extensions/online-ss/daemon.sh` to keep the frontlight on; this waits awake instead of using RTC suspend and uses more battery. Set it to `0` to use RTC suspend, which turns the frontlight off.
 
 * The Online Screensaver scriptlet appends daemon output to
 `/mnt/us/extensions/online-ss/daemon.log`. Check the latest reconnect attempts with
