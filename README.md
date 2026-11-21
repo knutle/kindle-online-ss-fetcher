@@ -25,7 +25,7 @@ You can also run the daemon manually from kterm: `sh /mnt/us/extensions/online-s
 
 ## Image format
 
-Export your server's image as an 8-bit grayscale PNG at 1236 × 1601 pixels for the fastest rendering and sharpest text on the PW5 screen. The reduced height (instead of the full 1648) lets the image render below the Kindle status bar, avoiding clutter on display updates. `screensavers/sample.png` in this repo is only an example and does not need to be copied to the Kindle.
+Export your server's image as an 8-bit grayscale PNG at 1236 × 1601 pixels for the fastest rendering and sharpest text on the PW5 screen. The reduced height (instead of the full 1648) lets the image render below the Kindle status bar, avoiding clutter on display updates. The daemon renders the image at a height of 1586 pixels from y=72, so the extra bottom rows (blank padding) overflow past the screen edge, ensuring no rendering artifacts appear below the footer. `screensavers/sample.png` in this repo is only an example and does not need to be copied to the Kindle.
 
 ## Troubleshooting
 
