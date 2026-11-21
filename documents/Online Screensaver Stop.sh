@@ -1,7 +1,11 @@
 #!/bin/sh
-# Name: Online Screensaver Stop
-# Author: Local Setup
+# Name: Stop Online Screensaver
+# Author: knutle
 # Icon:
+
+echo "Stopping online screensaver daemon..."
+sleep 3
+
 PIDFILE="/var/run/online_ss.pid"
 
 if [ -f "$PIDFILE" ]; then
