@@ -211,7 +211,7 @@ while true; do
     mv "$TMP" "$DEST"
     if [ -x "$FBINK_BIN" ]; then
         sleep 3
-        "$FBINK_BIN" -q $REFRESH_FLAG -g file="$DEST",w=1236,h=1648,halign=center,valign=top,y=68
+        "$FBINK_BIN" -q $REFRESH_FLAG -g file="$DEST",w=1236,h=1586,halign=center,valign=top,y=72
     fi
 
     # Brief pause so Wi-Fi and framebuffer shutdown finish before suspending CPU
