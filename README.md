@@ -30,6 +30,8 @@ Place one or more ZIP packages matching `upd_knutle_online_ss_pkg*.zip` in `/mnt
 
 The updater preserves assignments already in `extensions/online-ss/config/daemon.conf` (and legacy `daemon.sh`) and appends assignments from the package's default config if they do not exist. Successfully processed package ZIPs are removed.
 
+Download the versioned `upd_knutle_online_ss_pkg-<version>.zip` asset from a published GitHub Release and copy it to `/mnt/us`; downloading and installing updates automatically is not yet supported.
+
 Example package layout:
 
 ```text
@@ -39,8 +41,19 @@ upd_knutle_online_ss_pkg-1.2.3.zip
   documents/knutle_online_ss_stop.sh
   documents/knutle_online_ss_update.sh
   extensions/online-ss/daemon.sh
+  extensions/online-ss/bin/fbink_hf
   extensions/online-ss/config/daemon.conf
 ```
+
+## Releases
+
+Merge this release workflow into the default branch before creating the first release branch. GitHub may reject release operations performed with `GITHUB_TOKEN` when the release commit introduces or changes workflow files relative to the default branch.
+
+Create and push a branch named `release/vMAJOR.MINOR.PATCH`, for example `release/v1.2.3`. Versions use stable SemVer numeric components without leading zeroes. The release workflow packages the tracked `documents/` and `extensions/` files from that commit, creates the matching `v1.2.3` tag and draft GitHub Release, and attaches `upd_knutle_online_ss_pkg-1.2.3.zip`.
+
+Further pushes refresh the draft's tag and ZIP. Publish a draft manually only after its latest release workflow run succeeds; do not publish while the workflow is updating the tag or release. Once published, the release and tag must not be changed by this workflow: use a new version branch for the next release. Existing tags or releases not owned by the workflow cause it to fail instead of being overwritten. If release creation fails after the tag is pushed, inspect and manually remove the orphan tag before retrying.
+
+The workflow requires GitHub Actions to have `contents: write` permission. A future updater can discover the tag and versioned ZIP asset using GitHub's published releases API; drafts are not returned by the public latest-release endpoint. No automatic download is implemented.
 
 ## Image format
 
