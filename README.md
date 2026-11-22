@@ -17,11 +17,30 @@ The daemon renders images with the bundled FBInk binary (`extensions/online-ss/b
 
 Start one of the scriptlets from the Kindle library (`documents/`):
 
-* `Online Screensaver (Backlight On)`: keeps the frontlight on and waits awake instead of using RTC suspend. Wi-Fi stays enabled between fetches. Uses more battery.
-* `Online Screensaver (RTC Suspend)`: low-power RTC suspend. The frontlight is off and Wi-Fi is disabled between fetches.
-* `Online Screensaver Stop`: stops the daemon.
+* `Online Screensaver (Backlight On)` (`documents/knutle_online_ss_backlight_on.sh`): keeps the frontlight on and waits awake instead of using RTC suspend. Wi-Fi stays enabled between fetches. Uses more battery.
+* `Online Screensaver (RTC Suspend)` (`documents/knutle_online_ss_rtc_suspend.sh`): low-power RTC suspend. The frontlight is off and Wi-Fi is disabled between fetches.
+* `Stop Online Screensaver` (`documents/knutle_online_ss_stop.sh`): stops the daemon.
+* `Update Online Screensaver` (`documents/knutle_online_ss_update.sh`): updates the extension from package ZIP files in `/mnt/us`.
 
 You can also run the daemon manually from kterm: `sh /mnt/us/extensions/online-ss/daemon.sh`.
+
+## Updating
+
+Place one or more ZIP packages matching `upd_knutle_online_ss_pkg*.zip` in `/mnt/us`, then run `Update Online Screensaver` from the Kindle library. A package should contain the `documents/` and `extensions/` directories to install. Existing package scriptlets are identified by the `knutle_online_ss_` filename prefix, so renamed or deleted scriptlets are removed during updates.
+
+The updater preserves assignments already in `extensions/online-ss/config/daemon.conf` (and legacy `daemon.sh`) and appends assignments from the package's default config if they do not exist. Successfully processed package ZIPs are removed.
+
+Example package layout:
+
+```text
+upd_knutle_online_ss_pkg-1.2.3.zip
+  documents/knutle_online_ss_backlight_on.sh
+  documents/knutle_online_ss_rtc_suspend.sh
+  documents/knutle_online_ss_stop.sh
+  documents/knutle_online_ss_update.sh
+  extensions/online-ss/daemon.sh
+  extensions/online-ss/config/daemon.conf
+```
 
 ## Image format
 
