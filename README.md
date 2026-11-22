@@ -37,6 +37,18 @@ The automatic mode reads `WIFI_SSID` from the installed daemon config, enables t
 
 The automatic updater validates that the download is non-empty and a valid ZIP before handing it to the local updater. It uses `jq` when available and falls back to a POSIX `sed` parser on Kindle shells. Both updater modes write timestamped entries to `/mnt/us/extensions/online-ss/update.log`.
 
+```text
+upd_knutle_online_ss_pkg-1.2.3.zip
+  documents/knutle_online_ss_backlight_on.sh
+  documents/knutle_online_ss_rtc_suspend.sh
+  documents/knutle_online_ss_stop.sh
+  documents/knutle_online_ss_update_local.sh
+  documents/knutle_online_ss_update_auto.sh
+  extensions/online-ss/daemon.sh
+  extensions/online-ss/bin/fbink_hf
+  extensions/online-ss/config/daemon.conf
+```
+
 ## Releases
 
 Merge this release workflow into the default branch before creating the first release branch. GitHub may reject release operations performed with `GITHUB_TOKEN` when the release commit introduces or changes workflow files relative to the default branch.
@@ -52,6 +64,6 @@ Export your server's image as an 8-bit grayscale PNG at 1236 × 1601 pixels for 
 
 ## Troubleshooting
 
-* Logs: the scriptlets append daemon output to `/mnt/us/extensions/online-ss/daemon.log`. Check recent activity with `tail -n 100 /mnt/us/extensions/online-ss/daemon.log`.
+* Logs: the run scriptlets append daemon output to `/mnt/us/extensions/online-ss/daemon.log`, and both updater scriptlets write timestamped severity logs to `/mnt/us/extensions/online-ss/update.log` while also printing to the console. Check recent activity with `tail -n 100 /mnt/us/extensions/online-ss/daemon.log` and `tail -n 100 /mnt/us/extensions/online-ss/update.log`.
 * RTC device: on most PW5 units the real-time clock is `/dev/rtc0` or `/dev/rtc1` (the daemon prefers `rtc1` if present). If `rtcwake` doesn't wake the device on schedule, check `ls /dev/rtc*` in kterm and set `RTC_DEV` in `config/daemon.conf`.
 * Fetch failures and Wi-Fi status are shown on screen via FBInk ("DASHBOARD FETCH FAILED" / "INITIALIZING DASHBOARD").
