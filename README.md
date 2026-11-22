@@ -17,8 +17,8 @@ The daemon renders images with the bundled FBInk binary (`extensions/online-ss/b
 
 Start one of the scriptlets from the Kindle library (`documents/`):
 
-* `Online Screensaver (Backlight On)`: keeps the frontlight on and waits awake instead of using RTC suspend. Wi-Fi stays enabled between fetches. Uses more battery.
-* `Online Screensaver (RTC Suspend)`: low-power RTC suspend. The frontlight is off and Wi-Fi is disabled between fetches.
+* `Online Screensaver (Backlight On)` (`documents/knutle_online_ss_backlight_on.sh`): keeps the frontlight on and waits awake instead of using RTC suspend. Wi-Fi stays enabled between fetches. Uses more battery.
+* `Online Screensaver (RTC Suspend)` (`documents/knutle_online_ss_rtc_suspend.sh`): low-power RTC suspend. The frontlight is off and Wi-Fi is disabled between fetches.
 * `Stop Online Screensaver` (`documents/knutle_online_ss_stop.sh`): stops the daemon.
 * `Update Online Screensaver (Local ZIP)` (`documents/knutle_online_ss_update_local.sh`): updates the extension only from package ZIP files already in `/mnt/us`.
 * `Update Online Screensaver (Latest Release)` (`documents/knutle_online_ss_update_auto.sh`): connects to Wi-Fi, downloads the ZIP asset from the latest published GitHub Release, and installs it.
@@ -36,6 +36,8 @@ The local mode does not access the network. Packages are selected in filename or
 The automatic mode reads `WIFI_SSID` from the installed daemon config, enables the Wi-Fi manager, and waits up to 30 seconds for both `cmState=CONNECTED` and a default route. It then queries `https://api.github.com/repos/knutle/kindle-online-ss-fetcher/releases/latest`. Only the published latest release is considered: draft releases are excluded by the API, and only an HTTPS asset named `upd_knutle_online_ss_pkg-MAJOR.MINOR.PATCH.zip` is accepted.
 
 The automatic updater validates that the download is non-empty and a valid ZIP before handing it to the local updater. It uses `jq` when available and falls back to a POSIX `sed` parser on Kindle shells. Both updater modes write timestamped entries to `/mnt/us/extensions/online-ss/update.log`.
+
+Example package layout:
 
 ```text
 upd_knutle_online_ss_pkg-1.2.3.zip
