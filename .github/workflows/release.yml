@@ -1,0 +1,27 @@
+name: Release package
+
+on:
+  push:
+    branches:
+      - 'release/**'
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.event.deleted == false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test release packaging
+        run: python3 -m unittest discover -s tests -v
+      - name: Build and update draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/release.sh
