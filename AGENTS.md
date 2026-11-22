@@ -23,3 +23,8 @@ Living document. Add lessons from each task; fix anything that turns out wrong.
 - On the PW5, preserve the status-bar offset (`y=72`, rendered height `1586`) and the documented 1236 x 1601 image format and padding unless intentionally changing the layout. The daemon uses a full waveform refresh every ten successful cycles to mitigate ghosting.
 - Rendering and Wi-Fi shutdown have deliberate delays around initialization and suspend. Do not remove them without on-device verification; the Kindle UI can draw over the initialization screen.
 - For shell changes, run `sh -n` on the affected scripts and ShellCheck if available. On-device, test start and stop, a successful fetch, a failed fetch, and multiple suspend/wake/reconnect cycles in the relevant modes; inspect the daemon log and screen. State explicitly when device testing was not possible.
+
+## Releases
+
+- Merge release workflow changes into the default branch before creating a `release/vMAJOR.MINOR.PATCH` branch. A release commit that introduces or changes workflow files relative to the default branch may cause GitHub to reject `GITHUB_TOKEN` release operations.
+- Publish a draft release only after the latest workflow run for its release branch succeeds. Do not publish while the workflow is updating the release or tag.
