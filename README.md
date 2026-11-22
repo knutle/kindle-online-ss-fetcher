@@ -60,7 +60,6 @@ Create and push a branch named `release/vMAJOR.MINOR.PATCH`, for example `releas
 Further pushes refresh the draft's tag and ZIP. Publish a draft manually only after its latest release workflow run succeeds; do not publish while the workflow is updating the tag or release. Once published, the release and tag must not be changed by this workflow: use a new version branch for the next release. Existing tags or releases not owned by the workflow cause it to fail instead of being overwritten. If release creation fails after the tag is pushed, inspect and manually remove the orphan tag before retrying.
 
 The workflow requires GitHub Actions to have `contents: write` permission. The automatic updater discovers the tag and versioned ZIP asset using GitHub's published latest-release API; drafts are not returned by that endpoint.
-
 ## Image format
 
 Export your server's image as an 8-bit grayscale PNG at 1236 × 1601 pixels for the fastest rendering and sharpest text on the PW5 screen. The reduced height (instead of the full 1648) lets the image render below the Kindle status bar, avoiding clutter on display updates. The daemon renders the image at a height of 1586 pixels from y=72, so the extra bottom rows (blank padding) overflow past the screen edge, ensuring no rendering artifacts appear below the footer. `screensavers/sample.png` in this repo is only an example and does not need to be copied to the Kindle.
