@@ -1,16 +1,7 @@
 #!/bin/sh
 
-URL="http://10.3.141.182:8000/dashboard.png?city=Oslo"
-WIFI_SSID="krispy"
-WIFI_CONNECT_TIMEOUT=30
-WIFI_CONNECT_ATTEMPTS=2
-DEST="/mnt/us/screensavers/current.png"
-TMP="/mnt/us/screensavers/current.tmp"
-INTERVAL=60  # Wait interval (seconds)
 KEEP_BACKLIGHT_ON="${1:-1}"
 PIDFILE="/var/run/online_ss.pid"
-RTC_DEV="/dev/rtc0"
-[ -e /dev/rtc1 ] && RTC_DEV="/dev/rtc1"
 
 log() {
     LOG_SEVERITY="$1"
@@ -39,6 +30,23 @@ log_error() {
     log "ERROR" "$@"
 }
 
+SCRIPT_DIR=$(CDPATH= cd "$(dirname "$0")" 2>/dev/null && pwd) || {
+    log_error "Unable to resolve daemon directory"
+    exit 1
+}
+
+CONFIG_FILE="$SCRIPT_DIR/config/daemon.conf"
+if [ ! -r "$CONFIG_FILE" ]; then
+    log_error "Config file not readable: $CONFIG_FILE"
+    exit 1
+fi
+. "$CONFIG_FILE"
+
+if [ -z "$RTC_DEV" ]; then
+    RTC_DEV="/dev/rtc0"
+    [ -e /dev/rtc1 ] && RTC_DEV="/dev/rtc1"
+fi
+
 case "$KEEP_BACKLIGHT_ON" in
     0|1) ;;
     *)
@@ -52,11 +60,6 @@ if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
     exit 0
 fi
 echo $$ > "$PIDFILE"
-
-SCRIPT_DIR=$(CDPATH= cd "$(dirname "$0")" 2>/dev/null && pwd) || {
-    log_error "Unable to resolve daemon directory"
-    exit 1
-}
 
 FBINK_BIN="$SCRIPT_DIR/bin/fbink_hf"
 

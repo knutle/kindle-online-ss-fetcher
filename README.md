@@ -4,7 +4,7 @@ Periodically fetch a screensaver image from any url and render it on your kindle
 
 ## Installation
 
-Copy the `documents` and `extensions` folders to the root of the Kindle (`/mnt/us`), then edit the settings at the top of `extensions/online-ss/daemon.sh`:
+Copy the `documents` and `extensions` folders to the root of the Kindle (`/mnt/us`), then edit the settings in `extensions/online-ss/config/daemon.conf`:
 
 * `URL`: image to fetch
 * `WIFI_SSID`: Wi-Fi network to connect to
@@ -30,5 +30,5 @@ Export your server's image as an 8-bit grayscale PNG at 1236 × 1601 pixels for 
 ## Troubleshooting
 
 * Logs: the scriptlets append daemon output to `/mnt/us/extensions/online-ss/daemon.log`. Check recent activity with `tail -n 100 /mnt/us/extensions/online-ss/daemon.log`.
-* RTC device: on most PW5 units the real-time clock is `/dev/rtc0` or `/dev/rtc1` (the daemon prefers `rtc1` if present). If `rtcwake` doesn't wake the device on schedule, check `ls /dev/rtc*` in kterm and update `RTC_DEV` in `daemon.sh`.
+* RTC device: on most PW5 units the real-time clock is `/dev/rtc0` or `/dev/rtc1` (the daemon prefers `rtc1` if present). If `rtcwake` doesn't wake the device on schedule, check `ls /dev/rtc*` in kterm and set `RTC_DEV` in `config/daemon.conf`.
 * Fetch failures and Wi-Fi status are shown on screen via FBInk ("DASHBOARD FETCH FAILED" / "INITIALIZING DASHBOARD").
