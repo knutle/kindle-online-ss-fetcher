@@ -103,6 +103,24 @@ class ReleaseTest(unittest.TestCase):
     def remote_tag(self):
         return self.git("ls-remote", "--refs", "origin", "refs/tags/v1.2.3").split()[0]
 
+    def test_updater_scriptlets_are_in_package(self):
+        result = self.run_release()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        archive = self.output / "upd_knutle_online_ss_pkg-1.2.3.zip"
+        with zipfile.ZipFile(archive) as package:
+            names = set(package.namelist())
+            self.assertIn("documents/knutle_online_ss_update_local.sh", names)
+            self.assertIn("documents/knutle_online_ss_update_auto.sh", names)
+            self.assertNotIn("documents/knutle_online_ss_update.sh", names)
+
+    def test_auto_updater_uses_hardened_release_asset_parsing(self):
+        updater = ROOT / "documents/knutle_online_ss_update_auto.sh"
+        text = updater.read_text()
+        self.assertIn("command -v jq", text)
+        self.assertIn("^upd_knutle_online_ss_pkg-[0-9]+", text)
+        self.assertIn("https://", text)
+        self.assertIn("unzip -tq", text)
+
     def test_create_and_refresh_draft_with_installable_archive(self):
         result = self.run_release()
         self.assertEqual(result.returncode, 0, result.stderr)

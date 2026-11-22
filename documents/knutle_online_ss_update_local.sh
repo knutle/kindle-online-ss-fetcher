@@ -1,5 +1,5 @@
 #!/bin/sh
-# Name: Update Online Screensaver
+# Name: Update Online Screensaver (Local ZIP)
 # Author: knutle
 # Icon:
 
@@ -7,9 +7,34 @@ UPDATE_DIR="/mnt/us/.knutle_online_ss-update"
 INSTALLED_ROOT="/mnt/us"
 DOCUMENTS_DIR="$INSTALLED_ROOT/documents"
 EXTENSIONS_DIR="$INSTALLED_ROOT/extensions"
+LOG_DIR="$EXTENSIONS_DIR/online-ss"
+LOG_FILE="$LOG_DIR/update.log"
 
 log_update() {
-    echo "[knutle online ss update] $*"
+    LOG_SEVERITY="$1"
+    shift
+
+    LOG_TIMESTAMP=$(TZ="CET-1CEST,M3.5.0,M10.5.0/3" date "+%Y-%m-%d %H:%M:%S")
+    LOG_MESSAGE="$*"
+    printf '%s\n' "$LOG_MESSAGE" | while IFS= read -r LOG_LINE; do
+        LOG_ENTRY="[$LOG_TIMESTAMP] [$LOG_SEVERITY] $LOG_LINE"
+        printf '%s\n' "$LOG_ENTRY"
+        if [ -d "$LOG_DIR" ] || mkdir -p "$LOG_DIR" 2>/dev/null; then
+            if ! printf '%s\n' "$LOG_ENTRY" >> "$LOG_FILE"; then
+                printf '[%s] [WARN] Failed to append to %s\n' "$LOG_TIMESTAMP" "$LOG_FILE" >&2
+            fi
+        else
+            printf '[%s] [WARN] Failed to create %s for updater logs\n' "$LOG_TIMESTAMP" "$LOG_DIR" >&2
+        fi
+    done
+}
+
+log_info() {
+    log_update "INFO" "$@"
+}
+
+log_error() {
+    log_update "ERROR" "$@"
 }
 
 # Stop the daemon before replacing its files.
@@ -18,11 +43,11 @@ if [ -f "$PIDFILE" ]; then
     PID=$(cat "$PIDFILE")
     case "$PID" in
         ''|*[!0-9]*)
-            log_update "Ignoring invalid daemon PID: $PID"
+            log_error "Ignoring invalid daemon PID: $PID"
             ;;
         *)
             if kill -0 "$PID" 2>/dev/null; then
-                log_update "Stopping daemon PID $PID"
+                log_info "Stopping daemon PID $PID"
                 kill "$PID" 2>/dev/null || true
                 sleep 2
             fi
@@ -32,7 +57,7 @@ if [ -f "$PIDFILE" ]; then
 fi
 
 if ! command -v unzip >/dev/null 2>&1; then
-    log_update "ERROR: unzip is not available"
+    log_error "unzip is not available"
     exit 1
 fi
 
@@ -80,12 +105,12 @@ merge_config() {
 FOUND=0
 for ZIP in $(find /mnt/us -maxdepth 1 -type f -name 'upd_knutle_online_ss_pkg*.zip' | sort); do
     FOUND=$((FOUND + 1))
-    log_update "Processing $ZIP"
+    log_info "Processing $ZIP"
 
     EXTRACT_DIR="$UPDATE_DIR/package-$FOUND"
     mkdir -p "$EXTRACT_DIR"
     if ! unzip -q "$ZIP" -d "$EXTRACT_DIR"; then
-        log_update "ERROR: could not unpack $ZIP"
+        log_error "Could not unpack $ZIP"
         rm -rf "$EXTRACT_DIR"
         continue
     fi
@@ -98,7 +123,7 @@ for ZIP in $(find /mnt/us -maxdepth 1 -type f -name 'upd_knutle_online_ss_pkg*.z
     fi
 
     if [ ! -d "$PACKAGE_ROOT/documents" ] && [ ! -d "$PACKAGE_ROOT/extensions" ]; then
-        log_update "ERROR: zip contains neither documents nor extensions: $ZIP"
+        log_error "ZIP contains neither documents nor extensions: $ZIP"
         rm -rf "$EXTRACT_DIR"
         continue
     fi
@@ -141,11 +166,11 @@ for ZIP in $(find /mnt/us -maxdepth 1 -type f -name 'upd_knutle_online_ss_pkg*.z
 
     rm -rf "$EXTRACT_DIR"
     rm -f "$ZIP"
-    log_update "Updated from $ZIP"
+    log_info "Updated from $ZIP"
 done
 
 if [ "$FOUND" -eq 0 ]; then
-    log_update "No packages found matching /mnt/us/upd_knutle_online_ss_pkg*.zip"
+    log_info "No packages found matching /mnt/us/upd_knutle_online_ss_pkg*.zip"
 fi
 
 rm -rf "$UPDATE_DIR"
